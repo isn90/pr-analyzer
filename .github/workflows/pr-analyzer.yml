@@ -16,6 +16,9 @@ on:
       AZURE_OPENAI_DEPLOYMENT:
         required: true
         description: 'Azure OpenAI deployment name'
+      APP_SECRET_TOKEN:
+        required: true
+        description: 'GitHub Personal Access Token with repo permissions'
       GITHUB_TOKEN:
         required: false
         description: 'GitHub token for API access (automatically provided if not specified)'
@@ -72,11 +75,13 @@ jobs:
       
       - name: Verify GitHub Token
         run: |
-          if [ -n "${{ secrets.APP_SECRET_TOKEN }}" ]; then
-            echo "✅ APP_SECRET_TOKEN is set (length: ${#GITHUB_TOKEN})"
-            echo "Token prefix: ${GITHUB_TOKEN}..."
+          TOKEN_LENGTH=${#GITHUB_TOKEN}
+          if [ $TOKEN_LENGTH -gt 0 ]; then
+            echo "✅ APP_SECRET_TOKEN is set (length: $TOKEN_LENGTH)"
+            echo "Token starts with: ${GITHUB_TOKEN:0:7}..."
           else
-            echo "❌ APP_SECRET_TOKEN is NOT set"
+            echo "❌ APP_SECRET_TOKEN is NOT set or empty"
+            exit 1
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.APP_SECRET_TOKEN }}
