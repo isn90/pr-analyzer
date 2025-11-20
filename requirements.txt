@@ -1,0 +1,27 @@
+# Core dependencies for Azure OpenAI
+openai==1.12.0
+azure-identity==1.15.0
+python-dotenv==1.0.1
+PyYAML==6.0.1
+
+# Azure DevOps API
+azure-devops>=7.1.0b4
+
+# GitHub API
+PyGithub>=2.1.1
+
+# GitLab API
+python-gitlab>=4.0.0
+
+# HTTP requests and authentication
+requests>=2.31.0
+
+# CLI and utilities
+click>=8.1.7
+colorama>=0.4.6
+typing-extensions>=4.9.0
+
+# Additional dependencies needed by azure-devops
+msrest>=0.7.1
+certifi==2024.2.2
+urllib3==2.2.0

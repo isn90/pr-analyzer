@@ -1,0 +1,116 @@
+analysis:
+  # Maximum file size to analyze (in bytes)
+  max_file_size: 100000
+  
+  # Maximum number of files to analyze per PR
+  max_files: 50
+  
+  # File extensions to analyze (empty list means all files)
+  include_extensions:
+    - .py
+    - .js
+    - .ts
+    - .java
+    - .cs
+    - .go
+    - .rb
+    - .php
+    - .cpp
+    - .c
+    - .h
+    - .tsx
+    - .jsx
+  
+  # Directories to exclude from analysis
+  exclude_directories:
+    - node_modules
+    - venv
+    - env
+    - dist
+    - build
+    - .git
+    - __pycache__
+    - .pytest_cache
+    - coverage
+
+openai:
+  # Model to use for analysis
+  model: "gpt-4"
+  
+  # Temperature for responses (0.0 = deterministic, 1.0 = creative)
+  temperature: 0.3
+  
+  # Maximum tokens in response
+  max_tokens: 2000
+  
+  # Timeout for API calls (seconds)
+  timeout: 60
+
+reporting:
+  # Enable/disable summary comment
+  summary_enabled: true
+  
+  # Enable/disable inline comments
+  inline_comments_enabled: true
+  
+  # Severity levels to report (critical, high, medium, low, info)
+  severity_levels:
+    - critical
+    - high
+    - medium
+    - low
+  
+  # Maximum number of inline comments per file
+  max_inline_comments_per_file: 10
+  
+  # Comment header/footer
+  comment_header: "🤖 AI Code Review"
+  comment_footer: "Powered by Azure OpenAI"
+
+# Analysis categories and their weights
+analysis_categories:
+  security:
+    enabled: true
+    weight: 1.0
+    description: "Security vulnerabilities and risks"
+    
+  performance:
+    enabled: true
+    weight: 0.8
+    description: "Performance issues and optimizations"
+    
+  best_practices:
+    enabled: true
+    weight: 0.9
+    description: "Coding best practices and patterns"
+    
+  code_quality:
+    enabled: true
+    weight: 0.7
+    description: "Code quality, readability, and maintainability"
+    
+  bugs:
+    enabled: true
+    weight: 1.0
+    description: "Potential bugs and logic errors"
+    
+  documentation:
+    enabled: true
+    weight: 0.5
+    description: "Documentation completeness and quality"
+    
+  testing:
+    enabled: true
+    weight: 0.6
+    description: "Test coverage and quality"
+    
+  style:
+    enabled: true
+    weight: 0.4
+    description: "Code style and formatting"
+
+# Logging configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "pr_analyzer.log"

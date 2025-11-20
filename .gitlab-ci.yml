@@ -1,0 +1,61 @@
+# GitLab CI/CD Pipeline for PR Analyzer
+# Analyzes merge requests using Azure OpenAI
+
+stages:
+  - analyze
+
+pr_analyzer:
+  stage: analyze
+  image: python:3.12
+  
+  # Only run on merge requests
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  
+  before_script:
+    - python --version
+    - pip --version
+    - pip install --upgrade pip
+  
+  script:
+    - pip install -r requirements.txt
+    - python main.py
+  
+  variables:
+    # Provider type for GitLab
+    BUILD_REPOSITORY_PROVIDER: "GitLab"
+    
+    # GitLab CI/CD predefined variables are automatically available:
+    # - CI_MERGE_REQUEST_ID (global MR ID)
+    # - CI_MERGE_REQUEST_IID (project-level MR ID - this is what we need)
+    # - CI_PROJECT_NAME
+    # - CI_PROJECT_PATH (namespace/project)
+    # - CI_PROJECT_URL
+    # - CI_SERVER_URL
+    # - CI_JOB_TOKEN (automatically available for API access)
+    
+    # Set the PR ID to use the project-level IID
+    SYSTEM_PULLREQUEST_PULLREQUESTID: $CI_MERGE_REQUEST_IID
+  
+  # Required secrets - Add these in GitLab CI/CD Settings > Variables
+  # Make sure these are marked as "Protected" and "Masked":
+  # - AZURE_OPENAI_ENDPOINT
+  # - AZURE_OPENAI_API_KEY
+  # - AZURE_OPENAI_DEPLOYMENT
+  # - GITLAB_TOKEN (Personal Access Token with api scope)
+  #   OR use CI_JOB_TOKEN (automatically available, but has limited permissions)
+  
+  # Allow failure for now during testing
+  allow_failure: true
+  
+  # Cache pip packages to speed up subsequent runs
+  cache:
+    paths:
+      - .cache/pip
+  
+  # Artifacts for debugging
+  artifacts:
+    when: on_failure
+    paths:
+      - "*.log"
+    expire_in: 1 week
