@@ -73,25 +73,48 @@ jobs:
           pip install --upgrade pip
           pip install -r .pr-analyzer/requirements.txt
       
-      - name: Verify GitHub Token
+      - name: Debug - Check Token Availability
         run: |
-          TOKEN_LENGTH=${#GITHUB_TOKEN}
-          if [ $TOKEN_LENGTH -gt 0 ]; then
-            echo "✅ APP_SECRET_TOKEN is set (length: $TOKEN_LENGTH)"
-            echo "Token starts with: ${GITHUB_TOKEN:0:7}..."
+          echo "Checking token sources..."
+          echo "Repository: ${{ github.repository }}"
+          echo "Event name: ${{ github.event_name }}"
+          
+          # Check APP_SECRET_TOKEN
+          if [ -n "$APP_TOKEN" ]; then
+            echo "✅ APP_SECRET_TOKEN is available (length: ${#APP_TOKEN})"
+            echo "   Prefix: ${APP_TOKEN:0:10}..."
           else
-            echo "❌ APP_SECRET_TOKEN is NOT set or empty"
+            echo "❌ APP_SECRET_TOKEN is NOT available"
+          fi
+          
+          # Check default github.token
+          if [ -n "$DEFAULT_TOKEN" ]; then
+            echo "✅ github.token is available (length: ${#DEFAULT_TOKEN})"
+            echo "   Prefix: ${DEFAULT_TOKEN:0:10}..."
+          else
+            echo "❌ github.token is NOT available"
+          fi
+          
+          # Determine which token to use
+          if [ -n "$APP_TOKEN" ]; then
+            echo "📌 Will use: APP_SECRET_TOKEN"
+            echo "GITHUB_TOKEN=$APP_TOKEN" >> $GITHUB_ENV
+          elif [ -n "$DEFAULT_TOKEN" ]; then
+            echo "📌 Will use: github.token (fallback for same-repo testing)"
+            echo "GITHUB_TOKEN=$DEFAULT_TOKEN" >> $GITHUB_ENV
+          else
+            echo "❌ ERROR: No token available!"
             exit 1
           fi
         env:
-          GITHUB_TOKEN: ${{ secrets.APP_SECRET_TOKEN }}
+          APP_TOKEN: ${{ secrets.APP_SECRET_TOKEN }}
+          DEFAULT_TOKEN: ${{ github.token }}
       
       - name: Analyze Pull Request
         env:
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
-          GITHUB_TOKEN: ${{ secrets.APP_SECRET_TOKEN }}
           BUILD_REPOSITORY_PROVIDER: "GitHub"
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
