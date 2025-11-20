@@ -69,7 +69,8 @@ class BaseProvider(ABC):
         pr_id: str,
         file_path: str,
         line_number: int,
-        comment: str
+        comment: str,
+        position: int = None
     ) -> bool:
         """
         Post an inline comment on a specific line.
@@ -77,8 +78,9 @@ class BaseProvider(ABC):
         Args:
             pr_id: Pull request ID
             file_path: Path to the file
-            line_number: Line number for the comment
+            line_number: Line number in the new file for the comment
             comment: Comment text
+            position: Position in the diff (optional, for diff-based comments)
             
         Returns:
             True if successful, False otherwise

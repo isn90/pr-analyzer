@@ -159,7 +159,8 @@ class AzureDevOpsProvider(BaseProvider):
         pr_id: str,
         file_path: str,
         line_number: int,
-        comment: str
+        comment: str,
+        position: int = None
     ) -> bool:
         """Post an inline comment on a specific line."""
         try:

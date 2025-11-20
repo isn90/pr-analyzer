@@ -5,6 +5,7 @@ An automated tool that analyzes pull requests using Azure OpenAI to ensure code 
 ## Features
 
 - 🤖 **AI-Powered Analysis**: Uses Azure OpenAI to analyze code changes
+- 🎯 **Diff-Only Analysis**: Analyzes only changed lines (not entire files) for faster, focused reviews
 - 🔍 **Comprehensive Checks**: 
   - Code quality and best practices
   - Security vulnerabilities
@@ -13,8 +14,10 @@ An automated tool that analyzes pull requests using Azure OpenAI to ensure code 
   - Potential bugs
   - Documentation completeness
 - 💬 **Dual Reporting**: Posts both summary comments and inline code comments
+- 📍 **Precise Inline Comments**: Comments are posted on the exact lines that changed
 - 🔄 **Multi-Platform**: Supports Azure DevOps, GitHub, and GitLab repositories
 - ⚡ **Automated**: Runs automatically on PRs/MRs to develop/master branches
+- 💰 **Cost Efficient**: Analyzes only diffs to reduce token usage and costs
 
 ## Prerequisites
 
@@ -123,6 +126,7 @@ Edit `config.yaml` to customize analysis behavior:
 
 ```yaml
 analysis:
+  diff_only: true        # Analyze only changed lines (recommended)
   max_file_size: 100000  # Skip files larger than this (bytes)
   max_files: 50          # Maximum files to analyze per PR
   
@@ -140,6 +144,19 @@ reporting:
     - medium
     - low
 ```
+
+### Key Configuration Options
+
+- **`diff_only`** (default: `true`): When enabled, analyzes only the lines that changed in the PR, not entire files. This:
+  - Reduces token usage and costs significantly
+  - Provides faster analysis
+  - Gives more focused, relevant feedback
+  - Posts inline comments on exact changed lines
+  
+  Set to `false` to analyze full file content (useful for comprehensive reviews but higher cost)
+
+- **`inline_comments_enabled`**: Post comments directly on changed lines in the PR
+- **`severity_levels`**: Filter which severity levels to report (critical, high, medium, low)
 
 ## Usage
 

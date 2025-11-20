@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from .ai_analyzer import AIAnalyzer
 from ..utils.logger import get_logger
 from ..utils.config import Config
+from ..utils.diff_parser import DiffParser
 
 logger = get_logger()
 
@@ -84,20 +85,53 @@ class CodeAnalyzer:
             Analysis result for the file
         """
         file_path = file_info.get('path', '')
-        logger.info(f"Analyzing file: {file_path}")
+        change_type = file_info.get('change_type', 'modified')
+        logger.info(f"Analyzing file: {file_path} (change type: {change_type})")
         
         # Get diff/patch if available
-        diff = file_info.get('patch', '')
+        patch = file_info.get('patch', '')
         
-        # For now, we'll use the diff as the content
-        # In a real implementation, you might want to fetch the full file content
-        # from the provider
+        if not patch:
+            logger.warning(f"No patch available for {file_path}, skipping analysis")
+            return None
         
-        analysis = self.ai_analyzer.analyze_code_changes(
-            file_path=file_path,
-            code_diff=diff,
-            file_content=""  # Could fetch full content if needed
-        )
+        # Check if diff-only analysis is enabled (default: true)
+        use_diff_only = self.config.get('analysis.diff_only', True)
+        
+        if use_diff_only:
+            # Extract and format changes from diff
+            changes = DiffParser.extract_changes(patch, include_context=True, context_lines=3)
+            
+            if changes['total_additions'] == 0 and changes['total_deletions'] == 0:
+                logger.info(f"No additions or deletions in {file_path}, skipping")
+                return None
+            
+            # Format diff for analysis
+            formatted_diff = DiffParser.format_for_analysis(patch, file_path)
+            
+            logger.info(f"Analyzing {changes['total_additions']} additions and {changes['total_deletions']} deletions")
+            
+            # Analyze only the diff
+            analysis = self.ai_analyzer.analyze_code_changes(
+                file_path=file_path,
+                code_diff=formatted_diff,
+                changes_metadata=changes,
+                change_type=change_type
+            )
+        else:
+            # Fallback: analyze full file (old behavior)
+            logger.info("Using full file analysis mode")
+            analysis = self.ai_analyzer.analyze_code_changes(
+                file_path=file_path,
+                code_diff=patch,
+                changes_metadata=None,
+                change_type=change_type
+            )
+        
+        # Add diff metadata to analysis
+        if analysis:
+            analysis['patch'] = patch
+            analysis['change_type'] = change_type
         
         return analysis
     

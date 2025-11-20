@@ -1,4 +1,8 @@
 analysis:
+  # Enable diff-only analysis (analyze only changed lines, not full files)
+  # Set to false to analyze entire files (higher token usage)
+  diff_only: true
+  
   # Maximum file size to analyze (in bytes)
   max_file_size: 100000
   

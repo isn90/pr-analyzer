@@ -7,6 +7,7 @@ from typing import Dict, Any, List
 from ..providers.base_provider import BaseProvider
 from ..utils.logger import get_logger
 from ..utils.config import Config
+from ..utils.diff_parser import DiffParser
 
 logger = get_logger()
 
@@ -123,7 +124,7 @@ class PRReporter:
     
     def _post_inline_comments(self, pr_id: str, results: Dict[str, Any]) -> bool:
         """
-        Post inline comments on specific lines.
+        Post inline comments on specific diff lines.
         
         Args:
             pr_id: Pull request ID
@@ -134,6 +135,7 @@ class PRReporter:
         """
         max_per_file = self.config.get('reporting.max_inline_comments_per_file', 10)
         severity_levels = self.config.get('reporting.severity_levels', ['critical', 'high', 'medium', 'low'])
+        use_diff_positions = self.config.get('analysis.diff_only', True)
         
         success = True
         
@@ -142,6 +144,7 @@ class PRReporter:
         for analysis in results.get('file_analyses', []):
             file_path = analysis.get('file', '')
             issues = analysis.get('issues', [])
+            patch = analysis.get('patch', '')
             
             # Filter by severity
             filtered_issues = [
@@ -150,10 +153,16 @@ class PRReporter:
             ]
             
             if filtered_issues:
-                files_issues[file_path] = filtered_issues
+                files_issues[file_path] = {
+                    'issues': filtered_issues,
+                    'patch': patch
+                }
         
         # Post comments
-        for file_path, issues in files_issues.items():
+        for file_path, data in files_issues.items():
+            issues = data['issues']
+            patch = data['patch']
+            
             # Sort by severity and limit
             sorted_issues = sorted(
                 issues,
@@ -163,14 +172,28 @@ class PRReporter:
             for issue in sorted_issues:
                 try:
                     comment = self._format_inline_comment(issue)
+                    line_number = issue.get('line', 1)
+                    
+                    # Calculate diff position if using diff-based comments
+                    position = None
+                    if use_diff_positions and patch:
+                        position = DiffParser.get_diff_line_position(patch, line_number)
+                        if position is None:
+                            logger.warning(
+                                f"Could not find diff position for line {line_number} in {file_path}, "
+                                "falling back to line number"
+                            )
+                    
+                    # Post comment using diff position or line number
                     self.provider.post_inline_comment(
                         pr_id=pr_id,
                         file_path=file_path,
-                        line_number=issue.get('line', 1),
-                        comment=comment
+                        line_number=line_number,
+                        comment=comment,
+                        position=position  # Pass diff position if available
                     )
                 except Exception as e:
-                    logger.error(f"Error posting inline comment: {e}")
+                    logger.error(f"Error posting inline comment on {file_path}:{issue.get('line')}: {e}")
                     success = False
         
         return success

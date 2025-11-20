@@ -105,9 +105,10 @@ class GitHubProvider(BaseProvider):
         pr_id: str,
         file_path: str,
         line_number: int,
-        comment: str
+        comment: str,
+        position: int = None
     ) -> bool:
-        """Post an inline comment on a specific line."""
+        """Post an inline comment on a specific line or diff position."""
         try:
             pr = self.repo.get_pull(int(pr_id))
             
@@ -119,19 +120,31 @@ class GitHubProvider(BaseProvider):
             
             latest_commit = commits[-1]
             
-            # Create review comment
-            pr.create_review_comment(
-                body=comment,
-                commit=latest_commit,
-                path=file_path,
-                line=line_number
-            )
+            # If position is provided, use it for diff-based comment
+            # Otherwise use line number for file-based comment
+            if position is not None:
+                # Position-based comment (diff line position)
+                pr.create_review_comment(
+                    body=comment,
+                    commit=latest_commit,
+                    path=file_path,
+                    position=position  # Position in the diff
+                )
+                logger.debug(f"Posted inline comment to {file_path} at diff position {position}")
+            else:
+                # Line-based comment (file line number)
+                pr.create_review_comment(
+                    body=comment,
+                    commit=latest_commit,
+                    path=file_path,
+                    line=line_number
+                )
+                logger.debug(f"Posted inline comment to {file_path}:{line_number}")
             
-            logger.debug(f"Posted inline comment to {file_path}:{line_number}")
             return True
             
         except GithubException as e:
-            logger.error(f"Error posting inline comment: {e}")
+            logger.error(f"Error posting inline comment to {file_path}: {e.status} - {e.data}")
             return False
     
     def get_file_diff(self, pr_id: str, file_path: str) -> str:

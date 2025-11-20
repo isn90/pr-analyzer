@@ -50,21 +50,28 @@ class AIAnalyzer:
         self,
         file_path: str,
         code_diff: str,
-        file_content: str = ""
+        changes_metadata: Dict[str, Any] = None,
+        change_type: str = "modified"
     ) -> Dict[str, Any]:
         """
         Analyze code changes using Azure OpenAI.
         
         Args:
             file_path: Path to the file being analyzed
-            code_diff: Git diff of the changes
-            file_content: Full content of the file (optional)
+            code_diff: Formatted diff of the changes
+            changes_metadata: Metadata about changes (line counts, hunks, etc.)
+            change_type: Type of change (added, modified, deleted)
             
         Returns:
             Dictionary containing analysis results
         """
         try:
-            prompt = self._build_analysis_prompt(file_path, code_diff, file_content)
+            prompt = self._build_analysis_prompt(
+                file_path, 
+                code_diff, 
+                changes_metadata,
+                change_type
+            )
             
             logger.debug(f"Analyzing {file_path} with AI...")
             
@@ -73,7 +80,7 @@ class AIAnalyzer:
                 messages=[
                     {
                         "role": "system",
-                        "content": self._get_system_prompt()
+                        "content": self._get_system_prompt(change_type)
                     },
                     {
                         "role": "user",
@@ -89,6 +96,13 @@ class AIAnalyzer:
             # Parse the response into structured format
             result = self._parse_analysis_result(analysis_text, file_path)
             
+            # Add metadata
+            if changes_metadata:
+                result['changes_summary'] = {
+                    'additions': changes_metadata.get('total_additions', 0),
+                    'deletions': changes_metadata.get('total_deletions', 0)
+                }
+            
             logger.info(f"Completed AI analysis for {file_path}")
             return result
             
@@ -101,68 +115,87 @@ class AIAnalyzer:
                 'overall_score': 0
             }
     
-    def _get_system_prompt(self) -> str:
+    def _get_system_prompt(self, change_type: str = "modified") -> str:
         """Get the system prompt for AI analysis."""
         enabled_categories = self.config.get_enabled_categories()
         
-        return f"""You are an expert code reviewer analyzing pull request changes. 
-Your task is to review code changes and provide comprehensive feedback focusing on:
+        change_context = {
+            "modified": "analyzing modifications to existing code",
+            "added": "reviewing newly added code",
+            "deleted": "reviewing code deletions for potential impacts"
+        }.get(change_type, "analyzing code changes")
+        
+        return f"""You are an expert code reviewer {change_context} in a pull request. 
+Your task is to review ONLY the code changes shown (not the entire file) and provide focused, actionable feedback.
 
+**IMPORTANT**: 
+- Focus ONLY on the lines that were added (+) or modified
+- Do not comment on unchanged context lines
+- Reference specific line numbers from the diff
+- Be concise and specific to the actual changes
+
+Review focusing on:
 {', '.join(enabled_categories)}
 
 For each issue found, provide:
 1. Severity level (critical, high, medium, low)
 2. Category (security, performance, best_practices, code_quality, bugs, documentation, testing, style)
-3. Line number (if applicable)
-4. Clear description of the issue
+3. Line number from the diff
+4. Clear description of the issue IN THE CHANGED CODE
 5. Specific recommendation for fixing it
 6. Code example if helpful
 
 Format your response as follows:
 
 ## Summary
-[Brief overall assessment of the changes]
+[Brief assessment of the code changes - 2-3 sentences max]
 
 ## Issues Found
 
 ### [Severity] - [Category] - Line [number]
-**Issue**: [Clear description]
-**Recommendation**: [How to fix]
-**Example**: [Code example if applicable]
+**Issue**: [Clear, specific description]
+**Recommendation**: [Actionable fix]
+**Example**: [Code snippet if helpful]
 
 ## Overall Score
-[Score from 0-10 based on code quality]
+[Score from 0-10 based on the quality of the changes]
 
-Be specific, constructive, and focus on production-quality code standards."""
+If no issues are found in the changes, state "No issues found in these changes" and give a score of 10.
+
+Be specific, constructive, and focus only on production-quality standards for the CHANGED code."""
     
     def _build_analysis_prompt(
         self,
         file_path: str,
         code_diff: str,
-        file_content: str
+        changes_metadata: Dict[str, Any] = None,
+        change_type: str = "modified"
     ) -> str:
-        """Build the analysis prompt."""
-        prompt = f"""Review the following code changes from file: {file_path}
-
-"""
+        """Build the analysis prompt for diff-based review."""
         
-        if code_diff:
-            prompt += f"""## Code Changes (Diff):
-```
-{code_diff[:5000]}  # Limit diff size
-```
-
-"""
+        # Build context about the change
+        change_summary = ""
+        if changes_metadata:
+            additions = changes_metadata.get('total_additions', 0)
+            deletions = changes_metadata.get('total_deletions', 0)
+            change_summary = f"\n**Change Summary**: +{additions} lines added, -{deletions} lines removed"
         
-        if file_content:
-            prompt += f"""## Full File Content:
+        prompt = f"""Review the following code changes from: **{file_path}**
+**Change Type**: {change_type}{change_summary}
+
+## Code Changes to Review:
 ```
-{file_content[:3000]}  # Limit content size
+{code_diff[:8000]}  # Limit to prevent token overflow
 ```
 
-"""
-        
-        prompt += """Please analyze these changes thoroughly and provide detailed feedback."""
+**Instructions**:
+- Focus ONLY on the lines marked with '+' (additions)
+- Consider the context lines (unmarked) for understanding
+- Ignore lines marked with '-' unless they indicate a problematic deletion
+- Reference line numbers from the "new file" side of the diff
+- Be specific about what changed and why it matters
+
+Please analyze these specific changes and provide detailed, actionable feedback."""
         
         return prompt
     
