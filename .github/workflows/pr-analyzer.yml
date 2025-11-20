@@ -74,7 +74,7 @@ jobs:
         run: |
           if [ -n "${{ secrets.APP_SECRET_TOKEN }}" ]; then
             echo "✅ APP_SECRET_TOKEN is set (length: ${#GITHUB_TOKEN})"
-            echo "Token prefix: ${GITHUB_TOKEN:0:7}..."
+            echo "Token prefix: ${GITHUB_TOKEN}..."
           else
             echo "❌ APP_SECRET_TOKEN is NOT set"
           fi
