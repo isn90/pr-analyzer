@@ -70,6 +70,17 @@ jobs:
           pip install --upgrade pip
           pip install -r .pr-analyzer/requirements.txt
       
+      - name: Verify GitHub Token
+        run: |
+          if [ -n "${{ secrets.APP_SECRET_TOKEN }}" ]; then
+            echo "✅ APP_SECRET_TOKEN is set (length: ${#GITHUB_TOKEN})"
+            echo "Token prefix: ${GITHUB_TOKEN:0:7}..."
+          else
+            echo "❌ APP_SECRET_TOKEN is NOT set"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.APP_SECRET_TOKEN }}
+      
       - name: Analyze Pull Request
         env:
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
